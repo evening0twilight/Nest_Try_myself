@@ -37,8 +37,10 @@ jobs:
           host: ${{ secrets.DO_SERVER_HOST }}
           username: ${{ secrets.DO_SERVER_USERNAME }}
           key: ${{ secrets.DO_SERVER_SSH_KEY }}
+          script_timeout: 300 # 设置超时时间为 300 秒
+          retry: 3 # 重试次数
           script: |
-            docker login --username ${{ secrets.DOCR_USERNAME }} --password ${{ secrets.DOCR_TOKEN }} registry.digitalocean.com
+            echo "${{ secrets.DOCR_TOKEN }}" | docker login --username ${{ secrets.DOCR_USERNAME }} --password-stdin registry.digitalocean.com
             docker pull registry.digitalocean.com/jiang-nest/jiang-nest-study:latest
             docker ps -q --filter "name=jiang-nest-study" | grep -q . && docker stop jiang-nest-study || echo "Container jiang-nest-study is not running"
             docker ps -a -q --filter "name=jiang-nest-study" | grep -q . && docker rm jiang-nest-study || echo "Container jiang-nest-study does not exist"
