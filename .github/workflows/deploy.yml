@@ -6,8 +6,8 @@ on:
 
 env:
   REGISTRY: registry.digitalocean.com
-  IMAGE_NAME: registry.digitalocean.com/magic-person/nest_first_try # DOCR仓库路径
-  APP_NAME: nest-first-try      # 应用名称
+  IMAGE_NAME: registry.digitalocean.com/magic-person/nest_first_try
+  APP_NAME: nest-first-try
 
 jobs:
   build-and-deploy:
@@ -18,12 +18,12 @@ jobs:
       # 1. 设置 Node.js 环境
       - uses: actions/setup-node@v3
         with:
-          node-version: '18'         # 明确指定 Node.js 版本
+          node-version: '18'
           cache: 'npm'
 
       # 2. 安装依赖并构建
       - run: npm ci
-      - run: npm run build    # 确保你的 package.json 有 build 脚本
+      - run: npm run build
 
       # 3. 登录 DOCR
       - name: Login to DOCR
@@ -53,14 +53,24 @@ jobs:
           host: ${{ secrets.DO_SERVER_HOST }}
           username: ${{ secrets.DO_SERVER_USERNAME }}
           key: ${{ secrets.DO_SERVER_SSH_KEY }}
+          script_timeout: 300 # 设置超时时间为 300 秒
+          retry: 3 # 重试次数
           script: |
-            # 拉取最新镜像并重新运行容器
+            echo "开始部署..."
+            echo "拉取最新镜像..."
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            echo "停止并删除旧容器..."
             docker stop ${{ env.APP_NAME }} || true
             docker rm ${{ env.APP_NAME }} || true
+            echo "启动新容器..."
             docker run -d \
               --name ${{ env.APP_NAME }} \
               --restart always \
-              -p 3000:3000 \              # 根据你的 NestJS 端口调整
+              -p 3000:3000 \
               -e NODE_ENV=production \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Debug SSH connection
+        run: |
+          echo "Testing SSH connection..."
+          ssh -i ${{ secrets.DO_SERVER_SSH_KEY }} ${{ secrets.DO_SERVER_USERNAME }}@${{ secrets.DO_SERVER_HOST }} "echo 'SSH connection successful!'"
