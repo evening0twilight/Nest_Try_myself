@@ -1,26 +1,28 @@
-# 使用官方 Node 镜像
-FROM node:20
-
-# 安装 pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-# 创建并设置工作目录
+# 阶段1: 构建
+FROM node:18-alpine AS builder
 WORKDIR /app
 
-# 复制 package.json 和 pnpm-lock.yaml
-COPY package.json pnpm-lock.yaml* ./
+# 复制依赖文件并安装
+COPY package*.json ./
+COPY tsconfig*.json ./
+RUN npm ci
 
-# 安装依赖（使用 frozen lockfile 保证一致性）
-RUN pnpm install --frozen-lockfile
+# 复制源代码并构建
+COPY src ./src
+COPY nest-cli.json .
+RUN npm run build
 
-# 复制源代码
-COPY . .
+# 阶段2: 运行
+FROM node:18-alpine
+WORKDIR /app
 
-# 构建 Nest 应用（如果需构建）
-# RUN pnpm build
+# 复制构建产物和依赖
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/dist ./dist
 
-# 绑定应用到 3000 端口
+# 安装生产依赖（确保 devDependencies 不被安装）
+RUN npm ci --production
+
+# 暴露端口并启动
 EXPOSE 3000
-
-# 开发模式启动（带热更新）
-CMD ["pnpm", "dev"]
+CMD ["node", "dist/main.js"]
