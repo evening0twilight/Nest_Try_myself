@@ -1,63 +1,66 @@
-name: Build, Push, and Deploy
+name: Deploy NestJS to DigitalOcean
 
 on:
   push:
     branches: [main]
 
+env:
+  REGISTRY: registry.digitalocean.com
+  IMAGE_NAME: registry.digitalocean.com/magic-person/nest_first_try # DOCR仓库路径
+  APP_NAME: nest-first-try      # 应用名称
+
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. 检出代码
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2. 登录 DigitalOcean 容器注册表 (DOCR)
+      # 1. 设置 Node.js 环境
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'         # 明确指定 Node.js 版本
+          cache: 'npm'
+
+      # 2. 安装依赖并构建
+      - run: npm ci
+      - run: npm run build    # 确保你的 package.json 有 build 脚本
+
+      # 3. 登录 DOCR
       - name: Login to DOCR
-        uses: docker/login-action@v3
-        with:
-          registry: registry.digitalocean.com
-          username: ${{ secrets.DOCR_USERNAME }}
-          password: ${{ secrets.DOCR_TOKEN }}
-
-      # 3. 构建 Docker 镜像并打标签
-      - name: Build and Tag
         run: |
-          docker build -t registry.digitalocean.com/your-namespace/your-repo:latest .
-          docker tag registry.digitalocean.com/your-namespace/your-repo:latest registry.digitalocean.com/your-namespace/your-repo:${{ github.sha }}
+          echo "${{ secrets.DOCR_TOKEN }}" | docker login \
+          ${{ env.REGISTRY }} \
+          -u ${{ secrets.DOCR_USERNAME }} \
+          --password-stdin
 
-      # 4. 推送镜像到 DOCR
-      - name: Push to DOCR
+      # 4. 构建 Docker 镜像
+      - name: Build and tag image
         run: |
-          docker push registry.digitalocean.com/your-namespace/your-repo:latest
-          docker push registry.digitalocean.com/your-namespace/your-repo:${{ github.sha }}
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      # 1. 检出代码（可选，用于执行部署脚本）
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # 5. 推送镜像
+      - name: Push image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      # 2. 配置 SSH 密钥连接到服务器
-      - name: Add SSH Key
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.DO_SERVER_SSH_KEY }}
-
-      # 3. 通过 SSH 在服务器上拉取镜像并重启容器
+      # 6. SSH 部署到服务器
       - name: Deploy via SSH
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DO_SERVER_USERNAME }}@${{ secrets.DO_SERVER_HOST }} "
-            # 登录 DOCR
-            echo ${{ secrets.DOCR_TOKEN }} | docker login registry.digitalocean.com -u ${{ secrets.DOCR_USERNAME }} --password-stdin
-
-            # 拉取最新镜像
-            docker pull registry.digitalocean.com/your-namespace/your-repo:latest
-
-            # 重启容器（假设使用 docker-compose）
-            cd /path/to/your/project
-            docker-compose down
-            docker-compose up -d
-          "
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DO_SERVER_HOST }}
+          username: ${{ secrets.DO_SERVER_USERNAME }}
+          key: ${{ secrets.DO_SERVER_SSH_KEY }}
+          script: |
+            # 拉取最新镜像并重新运行容器
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker stop ${{ env.APP_NAME }} || true
+            docker rm ${{ env.APP_NAME }} || true
+            docker run -d \
+              --name ${{ env.APP_NAME }} \
+              --restart always \
+              -p 3000:3000 \              # 根据你的 NestJS 端口调整
+              -e NODE_ENV=production \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
