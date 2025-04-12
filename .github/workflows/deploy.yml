@@ -42,7 +42,7 @@ jobs:
           source: './'
           target: /home/apps-server/realworld-server/
 
-          # 这里用的是 appleboy/ssh-action@master，它是一个自定义的 github Actions action，用于在 GitHub Actions 工作流中通过 SSH 远程执行命令。它可以与远程服务器交互，例如部署应用程序、执行远程命令、上传文件等等；可以通过配置 host、username、port 等参数来设置 SSH 连接的参数，并通过 script 参数来指定要执行的指令。
+          # 这里用的是 appleboy/ssh-action@master，它是一个自定义的 github Actions action，用于在 GitHub Actions 工作流中通过 SSH 远程执行命令。它可以与远程服务器交gi互，例如部署应用程序、执行远程命令、上传文件等等；可以通过配置 host、username、port 等参数来设置 SSH 连接的参数，并通过 script 参数来指定要执行的指令。
       - name: SSH to server and restart application
         uses: appleboy/ssh-action@master
         with:
@@ -54,3 +54,4 @@ jobs:
               npm install
               npm run build
               pm2 restart ./dist/src/main.js --name realworld-server
+      # 后面还可以添加其他的方式，但是还是必须包含上面的三个步骤
