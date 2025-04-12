@@ -1,66 +1,55 @@
-name: Deploy NestJS to DigitalOcean
+# name: 定义步骤的名称 给每一个步骤加一个名称，用来标明这个步骤是在做什么事情 
+# 一般在Git action中对应的就是：
+# Checkout code
+# Copy files to server
+# SSH to server and restart application
+name: Deploy to CentOS Server
 
+# on: 定义触发 Github Actions 运行的事件类型
+# 这里触发的是 push，分支 branch 是 master，也就是当我们向 master 分支 push 代码的时候，会出发当前的流水线作业。
 on:
   push:
-    branches: [main]
+    branches:
+      - master
 
-env:
-  REGISTRY: registry.digitalocean.com
-  IMAGE_NAME: registry.digitalocean.com/magic-person/nest_first_try # DOCR仓库路径
-  APP_NAME: nest-first-try      # 应用名称
-
+# jobs: 定义一个或多个需要执行的作业。
 jobs:
-  build-and-deploy:
+  # deploy: deploy 语句通常用于部署代码或应用到目标环境，例如生产环境或测试环境。 jobs 下边可以有多个 deploy。
+  deploy:
+    # runs-on: 用于指定在哪个操作系统中运行 job，它允许你在 github actions 中选择一个特定的虚拟机作为 job 的运行环境。它的值可以有这几种形式：
+    # 操作系统名称：例如：ubuntu-latest、macos-latest、windows-latest，分别表示最新版本的 Ubuntu、macOS 和 Windows 操作系统。
+    # 操作系统版本号：ubuntu-20.04、macos-11.3、windows-2019，分别表示特定版本的 Ubuntu、macOS 和 Windows 操作系统。
+    # 自定义虚拟机镜像名称，例如：my-centos-image，表示使用你自己定义的虚拟机镜像。 在每个 job 中可以使用 runs-on 指定不同的操作系统，你可以根据需要选择合适的操作系统环境来执行不同的构建、测试、部署等操作。
     runs-on: ubuntu-latest
+
+    # steps: 定义作业中需要执行的作业。每个步骤都有一个 name 和一个使用的动作。
     steps:
-      - uses: actions/checkout@v4
+      # name: 也就是任务名称
+      # 这里的name就是用来说明，这个是拿来检查代码的
+      - name: Checkout code
+      # uses: 引用外部的 Action，可以是 github上的 Action 或者是 Docker 镜像。
+      # 这里第一步使用了 actions/checkout@v2，它是一个预定义的 github Actions action，用于从指定的仓库中检出代码到当前工作流的工作目录，以便后续步骤可以在该工作目录中执行操作。
+      # 第二步使用了 appleboy/scp-action@master，它是一个自定义的 github Actions action，用于执行 SCP(Secure Copy Protocol) 命令，用于在不同计算机之间进行文件传输，可以通过配置 host、username、port 等参数来设置 SSH 连接参数；source 是你要复制的资源文件，target 是复制之后输出的位置。这里是把上一步检出的内容(也就是master分支)输出到服务器上的 /home/apps-server/realworld-server/。
+      # 第三步使用了 appleboy/ssh-action@master，他是一个 github Actions 自定义的一个 Action，用于在 github Actins 工作流中通过 SSH 远程执行命。它可以用于与远程服务器交互，例如部署应用程序、执行远程命令、上传文件等等；也可以通过配置 host、username、port 等参数来设置 SSH 连接的参数，并通过 script 参数来指定要执行的指令。
+        uses: actions/checkout@v2
 
-      # 1. 设置 Node.js 环境
-      - uses: actions/setup-node@v3
+      - name: Copy files to server
+        uses: appleboy/scp-action@master
         with:
-          node-version: '18'         # 明确指定 Node.js 版本
-          cache: 'npm'
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+            password: ${{ secrets.SERVER_PASSWORD }}
+            source: './'
+            target: /home/apps-server/realworld-server/
 
-      # 2. 安装依赖并构建
-      - run: npm ci
-      - run: npm run build    # 确保你的 package.json 有 build 脚本
-
-      # 3. 登录 DOCR
-      - name: Login to DOCR
-        run: |
-          echo "${{ secrets.DOCR_TOKEN }}" | docker login \
-          ${{ env.REGISTRY }} \
-          -u ${{ secrets.DOCR_USERNAME }} \
-          --password-stdin
-
-      # 4. 构建 Docker 镜像
-      - name: Build and tag image
-        run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest .
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-      # 5. 推送镜像
-      - name: Push image
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-      # 6. SSH 部署到服务器
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+      - name: SSH to server and restart application
+        uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.DO_SERVER_HOST }}
-          username: ${{ secrets.DO_SERVER_USERNAME }}
-          key: ${{ secrets.DO_SERVER_SSH_KEY }}
-          script: |
-            # 拉取最新镜像并重新运行容器
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            docker stop ${{ env.APP_NAME }} || true
-            docker rm ${{ env.APP_NAME }} || true
-            docker run -d \
-              --name ${{ env.APP_NAME }} \
-              --restart always \
-              -p 3000:3000 \              # 根据你的 NestJS 端口调整
-              -e NODE_ENV=production \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            host: ${{ secrets.SERVER_HOST }}
+            username: ${{ secrets.SERVER_USERNAME }}
+            password: ${{ secrets.SERVER_PASSWORD }}
+            script: |
+              cd /home/apps-server/realworld-server
+              npm install
+              npm run build
+              pm2 restart ./dist/src/main.js --name realworld-server
