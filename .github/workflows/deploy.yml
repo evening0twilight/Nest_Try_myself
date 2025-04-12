@@ -38,9 +38,9 @@ jobs:
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
-            password: ${{ secrets.SERVER_PASSWORD }}
-            source: './'
-            target: /home/apps-server/realworld-server/
+          password: ${{ secrets.SERVER_PASSWORD }}
+          source: './'
+          target: /home/apps-server/realworld-server/
 
       - name: SSH to server and restart application
         uses: appleboy/ssh-action@master
