@@ -6,11 +6,11 @@
 name: Deploy to CentOS Server
 
 # on: 定义触发 Github Actions 运行的事件类型
-# 这里触发的是 push，分支 branch 是 master，也就是当我们向 master 分支 push 代码的时候，会出发当前的流水线作业。
+# 这里触发的是 push，分支 branch 是 main，也就是当我们向 main 分支 push 代码的时候，会出发当前的流水线作业。
 on:
   push:
     branches:
-      - master
+      - main
 
 # jobs: 定义一个或多个需要执行的作业。
 jobs:
@@ -29,12 +29,12 @@ jobs:
       - name: Checkout code
       # uses: 引用外部的 Action，可以是 github上的 Action 或者是 Docker 镜像。
       # 这里第一步使用了 actions/checkout@v2，它是一个预定义的 github Actions action，用于从指定的仓库中检出代码到当前工作流的工作目录，以便后续步骤可以在该工作目录中执行操作。
-      # 第二步使用了 appleboy/scp-action@master，它是一个自定义的 github Actions action，用于执行 SCP(Secure Copy Protocol) 命令，用于在不同计算机之间进行文件传输，可以通过配置 host、username、port 等参数来设置 SSH 连接参数；source 是你要复制的资源文件，target 是复制之后输出的位置。这里是把上一步检出的内容(也就是master分支)输出到服务器上的 /home/apps-server/realworld-server/。
-      # 第三步使用了 appleboy/ssh-action@master，他是一个 github Actions 自定义的一个 Action，用于在 github Actins 工作流中通过 SSH 远程执行命。它可以用于与远程服务器交互，例如部署应用程序、执行远程命令、上传文件等等；也可以通过配置 host、username、port 等参数来设置 SSH 连接的参数，并通过 script 参数来指定要执行的指令。
+      # 第二步使用了 appleboy/scp-action@main，它是一个自定义的 github Actions action，用于执行 SCP(Secure Copy Protocol) 命令，用于在不同计算机之间进行文件传输，可以通过配置 host、username、port 等参数来设置 SSH 连接参数；source 是你要复制的资源文件，target 是复制之后输出的位置。这里是把上一步检出的内容(也就是main分支)输出到服务器上的 /home/apps-server/realworld-server/。
+      # 第三步使用了 appleboy/ssh-action@main，他是一个 github Actions 自定义的一个 Action，用于在 github Actins 工作流中通过 SSH 远程执行命。它可以用于与远程服务器交互，例如部署应用程序、执行远程命令、上传文件等等；也可以通过配置 host、username、port 等参数来设置 SSH 连接的参数，并通过 script 参数来指定要执行的指令。
         uses: actions/checkout@v2
 
       - name: Copy files to server
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@main
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
@@ -43,7 +43,7 @@ jobs:
           target: /home/apps-server/realworld-server/
 
       - name: SSH to server and restart application
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@main
         with:
             host: ${{ secrets.SERVER_HOST }}
             username: ${{ secrets.SERVER_USERNAME }}
