@@ -58,4 +58,4 @@ jobs:
               pm2 start ./dist/src/main.js --name realworld-server
               pm2 save
               pm2 list
-      # 后面还可以添加其他的方式，但是还是必须包含上面的三个步骤
+      # 后面还可以添加其他的方式，但是还是必须包含上面的三个步骤,并且需要将内容写完整注意缩进问题
