@@ -40,8 +40,12 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
+          key: ""  # 显式禁用密钥认证
+          port: 22
           source: './'
           target: /home/apps-server/realworld-server/
+          # 开启详细日志
+          debug: true  
 
           # 这里用的是 appleboy/ssh-action@v0.1.7，它是一个自定义的 github Actions action，用于在 GitHub Actions 工作流中通过 SSH 远程执行命令。它可以与远程服务器交gi互，例如部署应用程序、执行远程命令、上传文件等等；可以通过配置 host、username、port 等参数来设置 SSH 连接的参数，并通过 script 参数来指定要执行的指令。
       - name: SSH to server and restart application
@@ -54,8 +58,11 @@ jobs:
             # sudo apt-get install -y nodejs
             # 是加入 Node.js 安装，并且指定 Node.js 版本。
             script: |
-              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              sudo apt-get install -y nodejs
+              if ! command -v node &> /dev/null; then
+                curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+                sudo apt-get install -y nodejs
+              fi
+              
               cd /home/apps-server/realworld-server
               npm install
               npm run build
@@ -63,5 +70,4 @@ jobs:
               pm2 delete realworld-server || true
               pm2 start ./dist/src/main.js --name realworld-server
               pm2 save
-              pm2 list
       # 后面还可以添加其他的方式，但是还是必须包含上面的三个步骤,并且需要将内容写完整注意缩进问题
