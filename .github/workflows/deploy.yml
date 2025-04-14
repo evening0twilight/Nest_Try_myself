@@ -36,6 +36,7 @@ jobs:
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
+        # 这里可以尝试不使用密码登录，也可以尝试SSH来进行登录
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
@@ -49,7 +50,12 @@ jobs:
             host: ${{ secrets.SERVER_HOST }}
             username: ${{ secrets.SERVER_USERNAME }}
             password: ${{ secrets.SERVER_PASSWORD }}
+            # curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+            # sudo apt-get install -y nodejs
+            # 是加入 Node.js 安装，并且指定 Node.js 版本。
             script: |
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              sudo apt-get install -y nodejs
               cd /home/apps-server/realworld-server
               npm install
               npm run build
