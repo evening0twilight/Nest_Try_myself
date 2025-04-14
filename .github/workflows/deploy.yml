@@ -60,10 +60,13 @@ jobs:
             # 是加入 Node.js 安装，并且指定 Node.js 版本。
             script: |
               if ! command -v node &> /dev/null; then
-                curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
                 sudo apt-get install -y nodejs
+                sudo npm install -g npm@latest
               fi
-              
+
+              sudo npm install -g pm2
+
               cd /home/apps-server/realworld-server
               npm install
               npm run build
