@@ -53,7 +53,8 @@ jobs:
         with:
             host: ${{ secrets.SERVER_HOST }}
             username: ${{ secrets.SERVER_USERNAME }}
-            password: ${{ secrets.SERVER_PASSWORD }}
+            # password: ${{ secrets.SERVER_PASSWORD }}
+            key: ${{ secrets.SSH_PRIVATE_KEY }}  # 使用密钥认证
             # curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
             # sudo apt-get install -y nodejs
             # 是加入 Node.js 安装，并且指定 Node.js 版本。
